@@ -6,36 +6,34 @@ library ieee;
 use ieee.std_logic_1164.all, ieee.numeric_std.all;
 
 package utils_ps4_p1 is
-    subtype bus_word_t is std_logic_vector (15 downto 0); --an input word to the adder
-    subtype code_word_t is std_logic_vector (2 downto 0); --an input word to the adder
-    type code_t is (add, addu, sub, subu, inc, dec);
-    function code_decoder (code_word_t) return code_t;
-    function code_encoder (code_t) return code_word_t;
+    subtype bus_t is std_logic_vector (15 downto 0); --an input word to the adder
+    subtype code_t is std_logic_vector (2 downto 0); --an input word to the adder
+    type code_word_t is (add, addu, sub, subu, inc, dec);
+    function decode (c: code_t) return code_word_t;
+    function encode (c: code_word_t) return code_t;
 end package utils_ps4_p1;
 package body utils_ps4_p1 is
-    function code_decoder (C: code_word_t) return code_t is 
-        variable code: code_t;
+    function decode (c: code_t) return code_word_t is 
     begin
-        code <= add when C="000" else
-                addu when C="001" else
-                sub when C="010" else
-                subu when C="011" else
-                inc when C="100" else
-                dec;
-        return code;
+        if c(code_t'high) = '1' then
+            if c(0) = '1' then return dec; else return inc; end if;
+        elsif c(code_t'high - 1) = '1' then 
+            if c(0) = '1' then return subu; else return sub; end if;
+        else
+            if c(code_t'low) = '1' then return addu; else return add; end if;
+        end if;
     end;
     
-    
-    function code_encoder (C: code_t) return code_word_t is 
-        variable code_word: code_word_t;
+    function encode (c: code_word_t) return code_t is 
     begin
-        code_word <= "000" when C=add else
-                     "001" when C=addu else
-                     "010" when C=sub else
-                     "011" when C=subu else
-                     "100" when C=inc else
-                     "101";
-        return code_word;
+        case c is
+            when add => return "000";
+            when addu => return "001";
+            when sub => return "010";
+            when subu => return "011";
+            when inc => return "100";
+            when dec => return "101";
+        end case;
     end;
     
 end package body utils_ps4_p1;
@@ -46,7 +44,7 @@ use ieee.std_logic_1164.all, ieee.numeric_std.all, work.utils_ps4_p1.all;
 entity testbench_p1 is end testbench_p1;
 architecture behaviour of testbench_p1 is
     constant ninputs: integer := 5; 
-    type bus_array_t is array (0 to ninputs-1) of bus_word_t;
+    type bus_array_t is array (0 to ninputs-1) of bus_t;
     type bit_array_t is array (0 to ninputs-1) of bit; --i.e., bit_vector
     type bit_d is ('0', '1', 'd'); --bit with 'don't care'
     type bit_d_array_t is array (0 to ninputs-1) of bit_d;
@@ -89,84 +87,90 @@ architecture behaviour of testbench_p1 is
     constant co_outputs_dec: bit_d_array_t := ('0', '1', '1', '1', 'd');
     ----------entity_under_test-----------------------------
     component adder is
-    port (A, B: in bus_word_t; 
-          CODE: in code_word_t;
+    port (A, B: in bus_t; 
+          CODE: in code_t;
           cin: in bit;
           coe: in bit; --carry out enable (active low)
-          C: out bus_word_t;
-          vout: out bit; --signed overflow
-          cout: out bit;
-    );
+          C: inout bus_t;
+          vout: inout bit; --signed overflow
+          cout: inout bit);
     end component;
     ----------signals------------------------------------
-    signal A_in, B_in, C_out: bus_word_t;
+    signal A_in, B_in, C_out: bus_t;
     signal code_in: code_t;
-    signal cin_in, coe_in, v_out: bit;
-    signal co_out: bit_d;
-    signal ready: bit := 0;
-    shared variable counter: integer := 0;
+    signal cin_in, coe_in, v_out, co_out: bit;
+    signal test_C_out: bus_t;
+    signal test_v_out: bit;
+    signal test_co_out: bit_d;
+    signal counter: integer := 0;
+    signal ready: bit:='0';
 begin
     adder0: adder port map (A=>A_in, B=>B_in, CODE=>code_in, cin=>cin_in, coe=>coe_in, 
                             C=>C_out, vout=>v_out, cout=>co_out);
-    process begin
-    stim: for i in code_t'range loop
-            variable cin_inputs: bit_array_t;
-            variable C_outputs: bus_array_t;
-            variable v_outputs: bit_array_t;
-            variable co_outputs: bit_d_array_t;
-          begin
-            code_in <= code_t'val(i);
-            cin_inputs <= ci_inputs_subX when code_in=sub or code_in=subu else
-                      ci_inputs_addX_incdec;
-            case code_in is
+    process  
+        variable cin_inputs: bit_array_t;
+        variable C_outputs: bus_array_t;
+        variable v_outputs: bit_array_t;
+        variable co_outputs: bit_d_array_t;
+    begin
+    stim: for word in code_word_t'left to code_word_t'right loop
+            code_in <= encode(word);
+            case word is
                 when add =>
-                    C_outputs <= C_outputs_add;
-                    v_outputs <= v_outputs_add;
-                    co_outputs <= co_outputs_add;
+                    cin_inputs := ci_inputs_addX_incdec;
+                    C_outputs := C_outputs_add;
+                    v_outputs := v_outputs_add;
+                    co_outputs := co_outputs_add;
                 when addu =>
-                    C_outputs <= C_outputs_addu;
-                    v_outputs <= v_outputs_addu;
-                    co_outputs <= co_outputs_addu;
+                    cin_inputs := ci_inputs_addX_incdec;
+                    C_outputs := C_outputs_addu;
+                    v_outputs := v_outputs_addu;
+                    co_outputs := co_outputs_addu;
                 when sub =>
-                    C_outputs <= C_outputs_sub;
-                    v_outputs <= v_outputs_sub;
-                    co_outputs <= co_outputs_sub;
+                    cin_inputs := ci_inputs_subX;
+                    C_outputs := C_outputs_sub;
+                    v_outputs := v_outputs_sub;
+                    co_outputs := co_outputs_sub;
                 when subu =>
-                    C_outputs <= C_outputs_subu;
-                    v_outputs <= v_outputs_subu;
-                    co_outputs <= co_outputs_subu;
+                    cin_inputs := ci_inputs_subX;
+                    C_outputs := C_outputs_subu;
+                    v_outputs := v_outputs_subu;
+                    co_outputs := co_outputs_subu;
                 when inc =>
-                    C_outputs <= C_outputs_inc;
-                    v_outputs <= v_outputs_inc;
-                    co_outputs <= co_outputs_inc;
+                    cin_inputs := ci_inputs_addX_incdec;
+                    C_outputs := C_outputs_inc;
+                    v_outputs := v_outputs_inc;
+                    co_outputs := co_outputs_inc;
                 when dec =>
-                    C_outputs <= C_outputs_dec;
-                    v_outputs <= v_outputs_dec;
-                    co_outputs <= co_outputs_dec;
+                    cin_inputs := ci_inputs_addX_incdec;
+                    C_outputs := C_outputs_dec;
+                    v_outputs := v_outputs_dec;
+                    co_outputs := co_outputs_dec;
             end case;
             for j in 0 to ninputs-1 loop
-              A_in <= A_inputs(j);
-              B_in <= B_inputs(j);
-              cin_in <= cin_inputs(j);
-              coe_in <= coe_inputs(j);
-              C_out <= C_outputs(j);
-              v_out <= v_outputs(j);
-              co_out <= co_outputs(j);
-              ready <= '1';
-              wait until ready='0';
-              counter := counter + 1;
-            end loop;
-          end loop;
-    end process;
+                A_in <= A_inputs(j);
+                B_in <= B_inputs(j);
+                cin_in <= cin_inputs(j);
+                coe_in <= coe_inputs(j);
+                test_C_out <= C_outputs(j);
+                test_v_out <= v_outputs(j);
+                test_co_out <= co_outputs(j);
 
-    process begin
-        wait until ready='1';
-        assert false report "trial " & integer'image(counter) severity note;
-        assert C=C_out report "discrepancy in C (port value) and C_out" severity warning;
-        assert vout=v_out report "discrepancy in vout (port value) and v_out" severity warning;
-        assert equals_d(cout, co_out) report "discrepancy in cout (port value) and co_out" severity warning;
-        assert false report "" severity note;
-        ready <= '0';
+                ready <= '1';
+                wait until ready = '1';
+
+                assert false report "trial " & integer'image(counter) severity note;
+                assert C_out=test_C_out report "discrepancy in C" severity warning;
+                assert v_out=test_v_out report "discrepancy in vout" severity warning;
+                assert equals_d(co_out, test_co_out) report "discrepancy in cout" severity warning;
+                assert false report "" severity note;
+
+                ready <= '0';
+                wait until ready = '0';
+
+                counter <= counter + 1;
+            end loop;
+        end loop;
     end process;
 end architecture behaviour;
 
@@ -174,14 +178,13 @@ library ieee;
 use ieee.std_logic_1164.all, ieee.numeric_std.all, work.utils_ps4_p1.all;
 
 entity adder is 
-    port (A, B: in bus_word_t; 
-          CODE: in code_word_t;
+    port (A, B: in bus_t; 
+          CODE: in code_t;
           cin: in bit;
           coe: in bit; --carry out enable (active low)
-          C: out bus_word_t;
-          vout: out bit; --signed overflow
-          cout: out bit;
-    );
+          C: inout bus_t;
+          vout: inout bit; --signed overflow
+          cout: inout bit);
 end adder;
 architecture behaviour of adder is
     function bit_to_vector (b: bit) return bit_vector is
@@ -195,21 +198,21 @@ architecture behaviour of adder is
         variable res: integer := 1;
     begin
         for i in 0 to exp-1 loop
-            res = res * base;
+            res := res * base;
         end loop;
         return res;
     end;
     --signed addition with parameter list
-    procedure p_add_p (in1, in2: in bus_word_t; ci, ce: in bit; out1: out bus_word_t; vo, co: out bit) is
-        variable in1_s: signed := signed(in1);
-        variable in2_s: signed := signed (in2);
-        variable in1_pos: boolean := in1_s(bus_word_t'high); --msb
-        variable in2_pos: boolean := in2_s(bus_word_t'high); --msb
+    procedure p_add_p (in1, in2: in bus_t; ci, ce: in bit; out1: inout bus_t; vo, co: out bit) is
+        variable in1_s: signed(bus_t'range) := signed(in1);
+        variable in2_s: signed(bus_t'range) := signed (in2);
+        variable in1_pos: boolean := in1_s(bus_t'high)='1'; --msb
+        variable in2_pos: boolean := in2_s(bus_t'high)='1'; --msb
     begin
-        out1 := (in1_s + in2_s) + signed(to_stdlogicvector(bit_to_vector(ci)));
+        out1 := std_logic_vector((in1_s + in2_s) + signed(to_stdlogicvector(bit_to_vector(ci))));
         
-        if (in1_pos and in2_pos and out1(bus_word_t'high)='1') or 
-            (not in1_pos and not in2_pos and out1(bus_word_t'high)='0') then
+        if (in1_pos and in2_pos and out1(bus_t'high)='1') or 
+            (not in1_pos and not in2_pos and out1(bus_t'high)='0') then
             vo := '1';
         else
             vo := '0';
@@ -219,40 +222,40 @@ architecture behaviour of adder is
         if ce='0' then
             --I think this is ok since it seemed like the point of this particular problem was
             --creating a good design organization and not making an adder, etc.
-            if abs(in1_s) + abs(in2_s) > to_signed(pow(2, (in1_s'length-1)-1, in1_s'length) then
+            if abs(in1_s) + abs(in2_s) > to_signed(pow(2, (in1_s'length-1)-1), in1_s'length) then
                 co := '1';
             end if;
         end if;
-    end procedure p_add;
+    end procedure p_add_p;
 
     --signed addition
-    procedure p_add is
+    procedure p_add (in1, in2: in bus_t; ci, ce: in bit; out1: inout bus_t; vo, co: out bit) is
     begin
-        p_add_p (in1=>A, in2=>B, ci=>cin, ce=>coe, out1=>C, vo=>vout, co=>cout);
+        p_add_p (in1=>in1, in2=>in2, ci=>ci, ce=>ce, out1=>out1, vo=>vo, co=>co);
     end procedure p_add;
 
     --unsigned addition
-    procedure p_addu is
+    procedure p_addu (in1, in2: in bus_t; ci, ce: in bit; out1: inout bus_t; vo, co: out bit) is
     begin
-        C <= unsigned(A) + unsigned(B);
-        if coe='0' then
-            if unsigned(A) + unsigned(B) > to_unsigned(pow(2, A'length)-1, A'length) then
-                cout='1';
+        out1 := std_logic_vector(unsigned(in1) + unsigned(in2));
+        if ce='0' then
+            if unsigned(in1) + unsigned(in2) > to_unsigned(pow(2, in1'length)-1, in1'length) then
+                co := '1';
             end if;
         end if;
     end procedure p_addu;
 
     --signed subtraction with parameter list
-    procedure p_sub_p (in1, in2: in bus_word_t; ci, ce: in bit; out1: out bus_word_t; vo, co: out bit) is
-        variable in1_s: signed := signed(in1);
-        variable in2_s: signed := signed (in2);
-        variable in1_pos: boolean := in1_s(bus_word_t'high); --msb
-        variable in2_pos: boolean := in2_s(bus_word_t'high); --msb
+    procedure p_sub_p (in1, in2: in bus_t; ci, ce: in bit; out1: inout bus_t; vo, co: out bit) is
+        variable in1_s: signed(bus_t'range) := signed(in1);
+        variable in2_s: signed(bus_t'range) := signed (in2);
+        variable in1_pos: boolean := in1_s(bus_t'high)='1'; --msb
+        variable in2_pos: boolean := in2_s(bus_t'high)='1'; --msb
     begin
-        out1 := (in1_s - in2_s) - signed(to_stdlogicvector(bit_to_vector(ci)));
+        out1 := std_logic_vector((in1_s - in2_s) - signed(to_stdlogicvector(bit_to_vector(ci))));
 
-        if (in1_pos and in2_pos and out1(bus_word_t'high)='1') or
-            (not in1_pos and not in2_pos and out1(bus_word_t'high)='0') then
+        if (in1_pos and in2_pos and out1(bus_t'high)='1') or
+            (not in1_pos and not in2_pos and out1(bus_t'high)='0') then
             vo := '1';
         else 
             vo := '0';
@@ -261,49 +264,56 @@ architecture behaviour of adder is
         co := '0';
         if ce='0' then
             if not in1_pos and not in2_pos and 
-                (abs(in1_s) + abs(in2_s) > to_signed(pow(w, (in1_s'length-1)-1))) then
+                (abs(in1_s) + abs(in2_s) > to_signed(pow(2, (in1_s'length-1)-1), in1_s'length)) then
                 co := '1';
             end if;
         end if;
-    end procedure p_sub;
+    end procedure p_sub_p;
 
     --signed subtraction
-    procedure p_sub is
+    procedure p_sub (in1, in2: in bus_t; ci, ce: in bit; out1: inout bus_t; vo, co: out bit) is
     begin
-        p_sub_p (in1=>A, in2=>B, ci=>cin, ce=>coe, out1=>C, vo=>vout, co=>cout);
+        p_sub_p (in1=>in1, in2=>in2, ci=>ci, ce=>ce, out1=>out1, vo=>vo, co=>co);
     end procedure p_sub;
 
     --unsigned subtraction
-    procedure p_subu is
+    procedure p_subu (in1, in2: in bus_t; ci, ce: in bit; out1: inout bus_t; vo, co: out bit) is
     begin
-        C <= unsigned(A) - unsigned(B);
-        if coe='0' then
-            if unsigned(B) > unsigned(A) then
-                cout='1';
+        out1 := std_logic_vector(unsigned(in1) - unsigned(in2));
+        if ce='0' then
+            if unsigned(in2) > unsigned(in1) then
+                co := '1';
             end if;
         end if;
     end procedure p_subu;
 
     --signed increment
-    procedure p_inc is
+    procedure p_inc (in1, in2: in bus_t; ci, ce: in bit; out1: inout bus_t; vo, co: out bit) is
     begin
-        p_add_p (in1=>A, in2=>X"0001", ci=>cin, ce=>coe, out1=>C, vo=>vout, co=>cout);
+        p_add_p (in1=>in1, in2=>in2, ci=>ci, ce=>ce, out1=>out1, vo=>vo, co=>co);
     end procedure p_inc;
 
     --signed decrement
-    procedure p_dec is
+    procedure p_dec (in1, in2: in bus_t; ci, ce: in bit; out1: inout bus_t; vo, co: out bit) is
     begin
-        p_sub_p (in1=>A, in2=>X"0001", ci=>cin, ce=>coe, out1=>C, vo=>vout, co=>cout);
+        p_sub_p (in1=>in1, in2=>in2, ci=>ci, ce=>ce, out1=>out1, vo=>vo, co=>co);
     end procedure p_dec;
 begin
-    process (A, B, CODE) begin
-        case CODE is
-            when add => p_add;
-            when addu => p_addu;
-            when sub => p_sub;
-            when subu => p_subu;
-            when inc => p_inc;
-            when dec => p_dec;
+    process (A, B, CODE) 
+        variable temp_c: bus_t := C;
+        variable temp_vout: bit := vout;
+        variable temp_cout: bit := cout;
+    begin
+        case decode(CODE) is
+            when add => p_add (A, B, cin, coe, temp_c, temp_vout, temp_cout);
+            when addu => p_addu (A, B, cin, coe, temp_c, temp_vout, temp_cout);
+            when sub => p_sub (A, B, cin, coe, temp_c, temp_vout, temp_cout);
+            when subu => p_subu (A, B, cin, coe, temp_c, temp_vout, temp_cout);
+            when inc => p_inc (A, X"0001", cin, coe, temp_c, temp_vout, temp_cout);
+            when dec => p_dec (A, X"0001", cin, coe, temp_c, temp_vout, temp_cout);
         end case;
+        C <= temp_c;
+        vout <= temp_vout;
+        cout <= temp_cout;
     end process;
 end architecture behaviour;
