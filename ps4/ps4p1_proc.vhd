@@ -3,11 +3,36 @@ library ieee;
 use ieee.std_logic_1164.all, ieee.numeric_std.all;
 
 package ps4p1_utils is
+    subtype code_t is std_logic_vector(3 downto 0);
     subtype memword_t is std_logic_vector(31 downto 0);
     subtype memaddr_t is std_logic_vector(11 downto 0);
     type program_t is array (integer range <>) of memword_t;
     function decode_addr(addr: memaddr_t) return integer;
     constant zbus: memword_t := (others => 'Z');
+    constant zero_word: memword_t := (others => '0');
+    constant op_nop: code_t := X"0";
+    constant op_ld: code_t := X"1";
+    constant op_str: code_t := X"2";
+    constant op_bra: code_t := X"3";
+    constant op_xor: code_t := X"4";
+    constant op_add: code_t := X"5";
+    constant op_rot: code_t := X"6";
+    constant op_shf: code_t := X"7";
+    constant op_hlt: code_t := X"8";
+    constant op_cmp: code_t := X"9";
+    constant cc_a: code_t := X"0";
+    constant cc_p: code_t := X"1";
+    constant cc_e: code_t := X"2";
+    constant cc_c: code_t := X"3";
+    constant cc_n: code_t := X"4";
+    constant cc_z: code_t := X"5";
+    constant cc_nc: code_t := X"6";
+    constant cc_po: code_t := X"7";
+    constant srcreg: std_logic := '0';
+    constant srcmem: std_logic := '0';
+    constant srcimm: std_logic := '1';
+    constant dstreg: std_logic := '0';
+    constant dstmem: std_logic := '1';
 end package ps4p1_utils;
 
 package body ps4p1_utils is
@@ -42,7 +67,6 @@ entity processor is
           addr: out memaddr_t;
           mem_r, mem_w, mem_en: out bit := '0'
           );
-          
 end processor;
 architecture beh of processor is
     --local processor signals
@@ -51,23 +75,18 @@ architecture beh of processor is
     signal pc: memaddr_t;
     signal ir: memword_t;
     signal psr: std_logic_vector(4 downto 0);
-    alias op: std_logic_vector(3 downto 0) is ir(31 downto 28);
-    alias cc: std_logic_vector(3 downto 0) is ir(27 downto 24);
-    alias srctype: std_logic is ir(27);
-    alias dsttype: std_logic is ir(26);
-    alias src_addr: std_logic_vector(memaddr_t'range) is ir(23 downto 12);
-    alias srcnt: std_logic_vector(memaddr_t'range) is ir(23 downto 12);
-    alias dst_addr: std_logic_vector(memaddr_t'range) is ir(11 downto 0);
+    alias op: code_t is ir(31 downto 28);
+    alias cc: code_t is ir(27 downto 24);
+    alias src_type: std_logic is ir(27);
+    alias dst_type: std_logic is ir(26);
+    alias src_addr: memaddr_t is ir(23 downto 12);
+    alias shf_cnt: memaddr_t is ir(23 downto 12);
+    alias dst_addr: memaddr_t is ir(11 downto 0);
     alias car: std_logic is psr(4);
     alias par: std_logic is psr(3);
     alias eve: std_logic is psr(2);
     alias neg: std_logic is psr(1);
     alias zer: std_logic is psr(0);
-    constant srcreg: std_logic := '0';
-    constant srcmem: std_logic := '0';
-    constant srcimm: std_logic := '1';
-    constant dstreg: std_logic := '0';
-    constant dstmem: std_logic := '1';
     ----convenience-operations----
     function increment(vec: std_logic_vector) return std_logic_vector is
     begin
@@ -90,19 +109,39 @@ architecture beh of processor is
         end loop;
         return true;
     end;
-    --local signals
-    signal mem_addr: memaddr_t;
-    signal mem_word: memword_t;
-    signal memr_req: bit := '0';
-    signal memw_req: bit := '0';
-    signal memrw_fin: bit := '0';
+    function check_regaddr(addr: in memaddr_t) return integer is
+        variable regaddr: integer;
+    begin
+        regaddr := decode_addr(addr);
+        assert regaddr >= regfile_t'low and regaddr <= regfile_t'high
+            report "register access out of bounds" severity failure;
+        return regaddr;
+    end;
+    function set_psr(res_word: in memword_t; carry: in std_logic) return std_logic_vector is
+        variable parity, even, negative, zero: std_logic := '0';
+    begin
+        for i in memword_t'range loop
+            parity := parity xor res_word(i);
+        end loop;
+        even := res_word(memword_t'low); 
+        negative := res_word(memword_t'high); 
+        if res_word=zero_word then
+            zero := '1';
+        else 
+            zero := '0';
+        end if;
+        return zero & negative & even & parity & carry; --4 downto 0
+    end;
 begin
     process
-        variable pc_int, pc_stop_int: integer;
+        variable pc_int, pc_stop_int, addr_int, shf_int: integer;
+        variable res_word: memword_t;
+        variable res_word_carry: std_logic_vector(memword_t'high + 1 downto memword_t'low);
+        variable res_car: std_logic;
     begin
         wait until clk'event and clk'last_value='0' and clk='1';
         
-        if pload='0' or not is_initialized(pc) then
+        if pload='0' or not is_initialized(pc) or pc_start'event then
             --initialize the program counter
             wait until pc_start'delayed'stable(1 ns);
             pc <= pc_start;
@@ -112,39 +151,121 @@ begin
             
             if pc_int <= pc_stop_int then
                 --fetch the next instruction from memory
-                mem_addr <= pc;
-                memr_req <= '1';
-                wait until memrw_fin ='1';
-                ir <= mem_word;
+                --it would be nice to wrap mem r/ws in a procedure, but can't drive signal from procedure (?)
+                mem_en <= '1';
+                addr <= pc;
+                mem_r <= '1';
+                wait until mem_ready ='1';
+                mem_r <= '0';
+                mem_en <= '0';
+                ir <= dbus;
+                wait until clk'event and clk'last_value='0' and clk='1';
                 --execute the instruction
+                if op=op_nop then
+                    pc <= increment(pc); 
+                elsif op=op_ld then
+                    mem_en <= '1';
+                    addr <= src_addr;
+                    mem_r <= '1';
+                    wait until mem_ready='1';
+                    mem_r <= '0';
+                    mem_en <= '0';
+                    res_word := dbus;
+                    regfile(check_regaddr(dst_addr)) <= res_word;
+                    pc <= increment(pc);
+                    psr <= set_psr(res_word, '0');
+                elsif op=op_str then
+                    if src_type=srcreg then
+                        dbus <= regfile(check_regaddr(src_addr));
+                    else
+                        dbus <= imm2word(src_addr);
+                    end if;
+                    mem_en <= '1';
+                    addr <= dst_addr;
+                    mem_w <= '1';
+                    wait until mem_ready='1';
+                    mem_w <= '0';
+                    mem_en <= '0';
+                    pc <= increment(pc); 
+                    psr <= (others => '0');
+                elsif op=op_bra then
+                    if (cc=cc_a) 
+                      or (cc=cc_p and par='1') 
+                      or (cc=cc_e and eve='1') 
+                      or (cc=cc_c and car='1') 
+                      or (cc=cc_n and neg='1') 
+                      or (cc=cc_z and zer='1') 
+                      or (cc=cc_nc and car='0') 
+                      or (cc=cc_po and neg='0')  then
+                        pc <= dst_addr;
+                    else
+                        report "condition code not recognized" severity failure;
+                    end if;
+                elsif op=op_xor then
+                    addr_int := check_regaddr(dst_addr);
+                    if src_type=srcreg then
+                        res_word := regfile(check_regaddr(src_addr));
+                    else
+                        res_word := imm2word(src_addr);
+                    end if;
+                    regfile(addr_int) <= std_logic_vector(unsigned(regfile(addr_int)) xor unsigned(res_word));
+                    psr <= set_psr(res_word, '0');
+                    pc <= increment(pc); 
+                elsif op=op_add then
+                    if src_type=srcreg then
+                        res_word := regfile(check_regaddr(src_addr));
+                    else
+                        res_word := imm2word(src_addr);
+                    end if;
+                    addr_int := check_regaddr(dst_addr);
+                    res_word_carry := std_logic_vector(unsigned(regfile(addr_int)) + unsigned('0' & res_word));
+                    regfile(addr_int) <= res_word_carry(memword_t'range);
+                    psr <= set_psr(res_word_carry(memword_t'range), res_word_carry(memword_t'high+1));
+                    pc <= increment(pc); 
+                elsif op=op_rot then
+                    addr_int := check_regaddr(dst_addr);
+                    shf_int := to_integer(signed(shf_cnt));
+                    if shf_int < 0 then
+                        res_word := std_logic_vector(rotate_right(unsigned(regfile(addr_int)), natural(abs(shf_int))));
+                        regfile(addr_int) <= res_word;
+                        psr <= set_psr(res_word, '0');
+                    else
+                        res_word := std_logic_vector(rotate_left(unsigned(regfile(addr_int)), natural(shf_int)));
+                        regfile(addr_int) <= res_word;
+                        psr <= set_psr(res_word, '0');
+                    end if;
+                    pc <= increment(pc); 
+                elsif op=op_shf then
+                    addr_int := check_regaddr(dst_addr);
+                    shf_int := to_integer(signed(shf_cnt));
+                    if shf_int < 0 then
+                        res_word := std_logic_vector(shift_right(unsigned(regfile(addr_int)), natural(abs(shf_int))));
+                        regfile(addr_int) <= res_word;
+                        psr <= set_psr(res_word, '0');
+                    else
+                        res_word_carry := std_logic_vector(shift_left('0' & unsigned(regfile(addr_int)), natural(shf_int)));
+                        regfile(addr_int) <= res_word_carry(memword_t'range);
+                        psr <= set_psr(res_word_carry(memword_t'range), res_word_carry(memword_t'high+1));
+                    end if;
+                    pc <= increment(pc); 
+                elsif op=op_hlt then
+                   wait on pc_start; 
+                elsif op=op_cmp then
+                    if src_type=srcreg then
+                        res_word := regfile(check_regaddr(src_addr));
+                    else
+                        res_word := imm2word(src_addr);
+                    end if;
+                    res_word := std_logic_vector(not unsigned(res_word));
+                    regfile(check_regaddr(dst_addr)) <= res_word;
+                    psr <= set_psr(res_word, '0');
+                    pc <= increment(pc); 
+                else 
+                    report "instruction not recognized" severity failure;
+                end if;
             end if;
         end if;
     end process;
-
-    mem_rw: process
-    begin
-        wait until (memr_req ='1' and memw_req ='0') or (memr_req='1' and memw_req='0');
-        memrw_fin <= '0';
-        mem_en <= '1';
-        addr <= mem_addr;
-        if memr_req='1' then
-            mem_r <= '1';
-            mem_w <= '0';
-        else
-            mem_r <= '0';
-            mem_w <= '1';
-        end if;
-        wait until mem_ready='1';
-        if memr_req='1' then
-            mem_word <= dbus;
-        else 
-            dbus <= mem_word;
-        end if;
-        mem_en <= '0';
-        mem_r <= '0';
-        mem_w <= '0';
-        memrw_fin <= '1';
-    end process mem_rw;
 
 end architecture beh;
 
