@@ -121,11 +121,11 @@ architecture beh of processor is
     alias src_addr: memaddr_t is ir(23 downto 12);
     alias shf_cnt: memaddr_t is ir(23 downto 12);
     alias dst_addr: memaddr_t is ir(11 downto 0);
-    alias car: std_logic is psr(4);
-    alias par: std_logic is psr(3);
+    alias zer: std_logic is psr(4);
+    alias neg: std_logic is psr(3);
     alias eve: std_logic is psr(2);
-    alias neg: std_logic is psr(1);
-    alias zer: std_logic is psr(0);
+    alias par: std_logic is psr(1);
+    alias car: std_logic is psr(0);
     ----convenience-operations----
     function increment(vec: std_logic_vector) return std_logic_vector is
     begin
@@ -133,10 +133,8 @@ architecture beh of processor is
     end;
     function imm2word (imm: memaddr_t) return memword_t is
         variable word: memword_t;
-        variable len: integer := imm'high - imm'low + 1;
     begin
-        --assert len <= (memword_t'high - memword_t'low + 1);
-        word := (memword_t'high downto len =>'0') & imm;
+        word := (memword_t'high downto memaddr_t'high+1 =>'0') & imm;
         return word;
     end;
     function check_regaddr(addr: in memaddr_t) return integer is
@@ -148,19 +146,22 @@ architecture beh of processor is
         return regaddr;
     end;
     function set_psr(res_word: in memword_t; carry: in std_logic) return std_logic_vector is
-        variable parity, even, negative, zero: std_logic := '0';
+        variable temp_psr: std_logic_vector(psr'range);
+        variable tpar: std_logic := '0';
     begin
+        temp_psr(0) := carry;   --carry
         for i in memword_t'range loop
-            parity := parity xor res_word(i);
+            tpar := tpar xor res_word(i);
         end loop;
-        even := res_word(memword_t'low); 
-        negative := res_word(memword_t'high); 
-        if res_word=zero_word then
-            zero := '1';
+        temp_psr(1) := tpar; --parity
+        temp_psr(2) := not res_word(memword_t'low);  --even
+        temp_psr(3) := res_word(memword_t'high);  --negative
+        if res_word=zero_word then --zero
+            temp_psr(4) := '1';
         else 
-            zero := '0';
+            temp_psr(4) := '0';
         end if;
-        return zero & negative & even & parity & carry; --4 downto 0
+        return temp_psr;
     end;
 begin
 
@@ -189,10 +190,12 @@ begin
             --report "pc_Start stable";
             wait until pload='1';
             pc <= pc_start;
+            psr <= (others => '0');
         else
             pc_int := to_integer(unsigned(pc));
             
             report "program counter: " & printi(pc_int);
+            report "psr car-par-eve-neg-zer: " & std_logic'image(car) & std_logic'image(par)  & std_logic'image(eve) & std_logic'image(neg) & std_logic'image(zer);   
             --fetch the next instruction from memory
             addr <= pc;
             mem_rw <= '1'; --read
@@ -205,22 +208,28 @@ begin
             wait until clk'event and clk'last_value='0' and clk='1';
             mem_en <= '0';
             wait until clk'event and clk'last_value='0' and clk='1';
+            
             --execute the instruction
             if op=op_nop then
                 pc <= increment(pc); 
                 wait until clk'event and clk'last_value='0' and clk='1';
                 report "nop";
             elsif op=op_ld then
-                addr <= src_addr;
-                mem_rw <= '1'; --read
-                mem_en <= '1';
-                wait until clk'event and clk'last_value='0' and clk='1';
-                --wait until mem_ready='1';
-                while mem_ready='0' loop
+                if src_type=srcmem then
+                    addr <= src_addr;
+                    mem_rw <= '1'; --read
+                    mem_en <= '1';
                     wait until clk'event and clk'last_value='0' and clk='1';
-                end loop;
-                mem_en <= '0';
-                res_word := dbus;
+                    --wait until mem_ready='1';
+                    while mem_ready='0' loop
+                        wait until clk'event and clk'last_value='0' and clk='1';
+                    end loop;
+                    res_word := dbus;
+                    wait until clk'event and clk'last_value='0' and clk='1';
+                    mem_en <= '0';
+                else
+                    res_word := imm2word(src_addr);
+                end if;
                 regfile(check_regaddr(dst_addr)) <= res_word;
                 pc <= increment(pc);
                 psr <= set_psr(res_word, '0');
@@ -357,58 +366,58 @@ architecture beh of memory is
                           ---------------------------------------------------------
                           --program 1: compute the 2's complement of mem[0], store result to mem[1]
                           ---------------------------------------------------------
-                          0=>X"0000_0006", 
-                          1=>X"0000_0000",
-                          2=>op_ld & srcmem & dstreg & B"00" & X"000" & X"000",
-                          3=>op_cmp & srcreg & dstreg & B"00" & X"000" & X"000",
-                          4=>op_add & srcimm & dstreg & B"00" & X"001" & X"000",
-                          5=>op_str & srcreg & dstmem & B"00" & X"000" & X"001",
-                          6=>op_hlt & X"000_0000", others => X"0000_0000"
+                          --0=>X"0000_0006", 
+                          --1=>X"0000_0000",
+                          --2=>op_ld & srcmem & dstreg & B"00" & X"000" & X"000",
+                          --3=>op_cmp & srcreg & dstreg & B"00" & X"000" & X"000",
+                          --4=>op_add & srcimm & dstreg & B"00" & X"001" & X"000",
+                          --5=>op_str & srcreg & dstmem & B"00" & X"000" & X"001",
+                          --6=>op_hlt & X"000_0000", others => X"0000_0000"
                           ---------------------------------------------------------
                           --program 2: count the 1's in mem[0], store result to mem[1]
                           ---------------------------------------------------------
-                          --X"0101_0101", 
-                          --X"0000_0000",
-                          --op_ld & srcmem & dstreg & B"00" & X"000" & X"000",
-                          --op_ld & srcimm & dstreg & B"00" & X"001" & X"001",--loop counter
-                          --op_ld & srcimm & dstreg & B"00" & X"000" & "X002",--temp result
-                          --op_shf & srcimm & dstreg & B"00" & X"001" & X"000",--shift the word
-                          --op_bra & cc_nc & X"000" & X"008", --jump forward 2
-                          --op_add & srcimm & dstreg & B"00" & X"001" & X"002",--inc result
-                          --op_shf & srcimm & dstreg & B"00" & X"001" & X"001",--shift the counter
-                          --op_bra & cc_z & X"000" & X"00B", --jump forward 2 
-                          --op_bra & cc_a & X"000" & X"005", --jump back 5 ('shift the word')
-                          --op_str & srcreg & dstmem & B"00" & X"002" & X"001",
-                          --op_hlt & X"000_0000", others => X"0000_0000"
+                          0=>X"0101_0101", 
+                          1=>X"0000_0000",
+                          2=>op_ld & srcmem & dstreg & B"00" & X"000" & X"000",
+                          3=>op_ld & srcimm & dstreg & B"00" & X"001" & X"001",--loop counter
+                          4=>op_ld & srcimm & dstreg & B"00" & X"000" & X"002",--result
+                          5=>op_shf & srcimm & dstreg & B"00" & X"001" & X"000",--shift the word L 1
+                          6=>op_bra & cc_nc & X"000" & X"008", --jump forward 2
+                          7=>op_add & srcimm & dstreg & B"00" & X"001" & X"002",--inc result
+                          8=>op_shf & srcimm & dstreg & B"00" & X"001" & X"001",--shift the counter L 1
+                          9=>op_bra & cc_nc & X"000" & X"005", --jump back 5 ('shift the word')
+                          --9=>op_hlt & X"000_0000",
+                          10=>op_str & srcreg & dstmem & B"00" & X"002" & X"001",
+                          11=>op_hlt & X"000_0000", others => X"0000_0000"
                           ---------------------------------------------------------
                           --program 3: multiply 2 signed 4-b numbers: mem[0]*mem[1]->mem[2]
                           ---------------------------------------------------------
-                          --X"0000_000A", --multiplier
-                          --X"0000_000B", --multiplicand
-                          --X"0000_0000",
-                          --op_ld & srcmem & dstreg & B"00" & X"001" & X"001", --multiplicand
-                          --op_ld & srcmem & dstreg & B"00" & X"000" & X"000", --multiplier
-                          --op_bra & cc_po & X"000" & X"00A", --jump forward 5 ('psr->multiplicand')
-                          --op_cmp & srcreg & dstreg & B"00" & X"000" & X"000", --2sComp of multiplier
-                          --op_add & srcimm & dstreg & B"00" & X"001" & X"000",
-                          --op_cmp & srcreg & dstreg & B"00" & X"001" & X"001", --2sComp of multiplicand
-                          --op_add & srcimm & dstreg & B"00" & X"001" & X"001",
-                          --op_xor & srcimm $ dstreg & B"00" & X"000" & X"001", --psr->multiplicand
-                          --op_bra & cc_po & X"000" & X"00E", --jump forward 3 ('loop counter')
-                          --op_ld & srcimm & dstreg & B"00" & X"FF0" & X"003", --sign extend multiplicand
-                          --op_xor & srcreg & dstreg & B"00" & X"003" & X"001",
-                          --op_ld & srcimm & dstreg & B"00" & X"008" & X"002",--loop counter
-                          --op_ld & srcreg & dstreg & B"00" & X"000" & X"003",--term
-                          --op_ld & srcimm & dstreg & B"00" & X"000" & X"004",--partial product
-                          --op_shf & srcimm & dstreg & B"00" & X"001" & X"000", --shift multiplier L 1
-                          --op_shf & srcimm & dstreg & B"00" & X"FFF" & X"000", --shift multiplier R 1
-                          --op_bra & cc_e & X"000" & X"015", --jump forward 2 ('shift term L 1')
-                          --op_add & srcreg & dstreg & B"00" & X"003" & X"004", --add term to partial
-                          --op_shf & srcimm & dstreg & B"00" & X"001" & X"003", --shift term L 1
-                          --op_shf & srcimm & dstreg & B"00" & X"FFF" & X"002", --shift loop counter L 1
-                          --op_bra & cc_z & X"000" & X"012", --jump back 5 ('shift multiplier R 1')
-                          --op_str & srcreg & dstmem & B"00" & X"004" & X"002",
-                          --op_hlt & X"000_0000", others => X"0000_0000"
+                          --0=>X"0000_000A", --multiplier
+                          --1=>X"0000_000B", --multiplicand
+                          --2=>X"0000_0000",
+                          --3=>op_ld & srcmem & dstreg & B"00" & X"001" & X"001", --multiplicand
+                          --4=>op_ld & srcmem & dstreg & B"00" & X"000" & X"000", --multiplier
+                          --5=>op_bra & cc_po & X"000" & X"00A", --jump forward 5 ('psr->multiplicand')
+                          --6=>op_cmp & srcreg & dstreg & B"00" & X"000" & X"000", --2sComp of multiplier
+                          --7=>op_add & srcimm & dstreg & B"00" & X"001" & X"000",
+                          --8=>op_cmp & srcreg & dstreg & B"00" & X"001" & X"001", --2sComp of multiplicand
+                          --9=>op_add & srcimm & dstreg & B"00" & X"001" & X"001",
+                          --10=>op_xor & srcimm $ dstreg & B"00" & X"000" & X"001", --psr->multiplicand
+                          --11=>op_bra & cc_po & X"000" & X"00E", --jump forward 3 ('loop counter')
+                          --12=>op_ld & srcimm & dstreg & B"00" & X"FF0" & X"003", --sign extend multiplicand
+                          --13=>op_xor & srcreg & dstreg & B"00" & X"003" & X"001",
+                          --14=>op_ld & srcimm & dstreg & B"00" & X"008" & X"002",--loop counter
+                          --15=>op_ld & srcreg & dstreg & B"00" & X"000" & X"003",--term
+                          --16=>op_ld & srcimm & dstreg & B"00" & X"000" & X"004",--partial product
+                          --17=>op_shf & srcimm & dstreg & B"00" & X"001" & X"000", --shift multiplier L 1
+                          --18=>op_shf & srcimm & dstreg & B"00" & X"FFF" & X"000", --shift multiplier R 1
+                          --19=>op_bra & cc_e & X"000" & X"015", --jump forward 2 ('shift term L 1')
+                          --20=>op_add & srcreg & dstreg & B"00" & X"003" & X"004", --add term to partial
+                          --21=>op_shf & srcimm & dstreg & B"00" & X"001" & X"003", --shift term L 1
+                          --22=>op_shf & srcimm & dstreg & B"00" & X"FFF" & X"002", --shift loop counter L 1
+                          --23=>op_bra & cc_z & X"000" & X"012", --jump back 5 ('shift multiplier R 1')
+                          --24=>op_str & srcreg & dstmem & B"00" & X"004" & X"002",
+                          --25=>op_hlt & X"000_0000", others => X"0000_0000"
                           );
     signal busdata: memword_t;
     signal rready, wready: bit := '0';
