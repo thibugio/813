@@ -1,13 +1,13 @@
 library ieee;
 use ieee.std_logic_1164.all, ieee.numeric_std.all;
 
-package ps4p1_utils is
+package ps4p5_utils is
     function signExtend(nbits: integer; vec: signed) return signed;
     function twosComp(a: signed) return signed;
     function vec2str(vec: signed) return string;
     function vec2strb(vec: signed) return string;
-end package ps4p1_utils;
-package body ps4p1_utils is
+end package ps4p5_utils;
+package body ps4p5_utils is
     function  signExtend(nbits: integer; vec: signed) return signed is
         variable res: signed(nbits-1 downto 0);
         variable len: integer := vec'high - vec'low + 1;
@@ -31,11 +31,11 @@ package body ps4p1_utils is
         end loop;
         return sb;
     end;
-end package body ps4p1_utils;
+end package body ps4p5_utils;
 ------------------------------------------
 ------------------------------------------
 library ieee;
-use ieee.std_logic_1164.all, ieee.numeric_std.all, work.ps4p1_utils.all;
+use ieee.std_logic_1164.all, ieee.numeric_std.all, work.ps4p5_utils.all;
 
 entity ldiv is 
     generic (nbits: integer := 4);
@@ -118,10 +118,10 @@ end architecture beh;
 ------------------------------------------
 ------------------------------------------
 library ieee;
-use ieee.std_logic_1164.all, ieee.numeric_std.all, work.ps4p1_utils.all;
+use ieee.std_logic_1164.all, ieee.numeric_std.all, work.ps4p5_utils.all;
 
-entity testbench_ps4p1 is end testbench_ps4p1;
-architecture beh of testbench_ps4p1 is
+entity testbench_ps4p5 is end testbench_ps4p5;
+architecture beh of testbench_ps4p5 is
     --test if a signed vector is valid (i.e. {0,1,H,L})
     function is_valid_number(a: signed) return boolean is
         variable valid: boolean := true;
@@ -198,7 +198,7 @@ end architecture beh;
 ------------------------------------------
 ------------------------------------------
 library ieee;
-use ieee.std_logic_1164.all, ieee.numeric_std.all, work.ps4p1_utils.all;
+use ieee.std_logic_1164.all, ieee.numeric_std.all, work.ps4p5_utils.all;
 
 entity unit_tests is end unit_tests;
 architecture beh of unit_tests is
