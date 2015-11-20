@@ -72,7 +72,8 @@ architecture beh of unit is
               addr: in memaddr_t; 
               dbus: inout memword_t;
               mem_ready: buffer bit := '0';
-              pload: buffer bit := '0');
+              pload: buffer bit := '0'
+              );
     end component;
     component processor is
         port (clk: in bit;
@@ -104,7 +105,8 @@ entity processor is
           pload: in bit;
           dbus: inout memword_t;
           addr: out memaddr_t;
-          mem_rw, mem_en: buffer bit); 
+          mem_rw, mem_en: buffer bit
+          ); 
 end processor;
 architecture beh of processor is
     --local processor signals
@@ -126,17 +128,20 @@ architecture beh of processor is
     alias eve: std_logic is psr(2);
     alias par: std_logic is psr(1);
     alias car: std_logic is psr(0);
-    ----convenience-operations----
+    ----local functions----
+    --increment a vector by 1
     function increment(vec: std_logic_vector) return std_logic_vector is
     begin
         return std_logic_vector(unsigned(vec) + B"1"); 
     end;
+    --translate a memory address into an literal value
     function imm2word (imm: memaddr_t) return memword_t is
         variable word: memword_t;
     begin
         word := (memword_t'high downto memaddr_t'high+1 =>'0') & imm;
         return word;
     end;
+    --do bounds checking on memory address and translate to int
     function check_regaddr(addr: in memaddr_t) return integer is
         variable regaddr: integer;
     begin
@@ -145,6 +150,7 @@ architecture beh of processor is
             report "register access out of bounds" severity failure;
         return regaddr;
     end;
+    --update the psr
     function set_psr(res_word: in memword_t; carry: in std_logic) return std_logic_vector is
         variable temp_psr: std_logic_vector(psr'range);
         variable tpar: std_logic := '0';
@@ -165,6 +171,7 @@ architecture beh of processor is
     end;
 begin
 
+    --tri-state the bus to avoid conflicts
     busdriver: process begin
         if mem_en='1' and mem_rw='0' then --write to memory
             dbus <= busdata;
@@ -174,6 +181,7 @@ begin
         wait on mem_en, mem_rw;
     end process busdriver;
 
+    --main()
     process
         variable pc_int, addr_int, shf_int: integer;
         variable res_word: memword_t;
@@ -185,9 +193,6 @@ begin
         
         if pload='0' or pc_start'active then
             --initialize the program counter
-            report "initializing program counter";
-            --wait until pc_start'delayed'stable(0.25 ns);
-            --report "pc_Start stable";
             wait until pload='1';
             pc <= pc_start;
             psr <= (others => '0');
@@ -195,12 +200,10 @@ begin
             pc_int := to_integer(unsigned(pc));
             
             report "program counter: " & printi(pc_int);
-            report "psr car-par-eve-neg-zer: " & std_logic'image(car) & std_logic'image(par)  & std_logic'image(eve) & std_logic'image(neg) & std_logic'image(zer);   
             --fetch the next instruction from memory
             addr <= pc;
             mem_rw <= '1'; --read
             mem_en <= '1';
-            --wait until mem_ready ='1';
             while mem_ready='0' loop
                 wait until clk'event and clk'last_value='0' and clk='1';
             end loop;
@@ -210,17 +213,18 @@ begin
             wait until clk'event and clk'last_value='0' and clk='1';
             
             --execute the instruction
+            --nop
             if op=op_nop then
                 pc <= increment(pc); 
                 wait until clk'event and clk'last_value='0' and clk='1';
                 report "nop";
+            --load
             elsif op=op_ld then
                 if src_type=srcmem then
                     addr <= src_addr;
                     mem_rw <= '1'; --read
                     mem_en <= '1';
                     wait until clk'event and clk'last_value='0' and clk='1';
-                    --wait until mem_ready='1';
                     while mem_ready='0' loop
                         wait until clk'event and clk'last_value='0' and clk='1';
                     end loop;
@@ -235,6 +239,7 @@ begin
                 psr <= set_psr(res_word, '0');
                 wait until clk'event and clk'last_value='0' and clk='1';
                 report "ld: reg " & printv(dst_addr) & " = " & printvs(res_word); 
+            --store
             elsif op=op_str then
                 if src_type=srcreg then
                     busdata <= regfile(check_regaddr(src_addr));
@@ -245,7 +250,6 @@ begin
                 mem_rw <= '0'; --write
                 mem_en <= '1';
                 wait until clk'event and clk'last_value='0' and clk='1';
-                --wait until mem_ready='1';
                 while mem_ready='0' loop
                     wait until clk'event and clk'last_value='0' and clk='1';
                 end loop;
@@ -254,6 +258,7 @@ begin
                 psr <= (others => '0');
                 wait until clk'event and clk'last_value='0' and clk='1';
                 report "str: mem " & printv(dst_addr) & " = " & printvs(busdata); 
+            --branch
             elsif op=op_bra then
                 if (cc=cc_a) 
                   or (cc=cc_p and par='1') 
@@ -269,6 +274,7 @@ begin
                 end if;
                 wait until clk'event and clk'last_value='0' and clk='1';
                 report "branch";
+            --xor
             elsif op=op_xor then
                 addr_int := check_regaddr(dst_addr);
                 if src_type=srcreg then
@@ -281,6 +287,7 @@ begin
                 pc <= increment(pc); 
                 wait until clk'event and clk'last_value='0' and clk='1';
                 report "xor: reg " & printi(addr_int) & " = " & printvs(regfile(addr_int));
+            --add
             elsif op=op_add then
                 if src_type=srcreg then
                     res_word := regfile(check_regaddr(src_addr));
@@ -294,6 +301,7 @@ begin
                 pc <= increment(pc); 
                 wait until clk'event and clk'last_value='0' and clk='1';
                 report "add: reg " & printi(addr_int) & " = " & printvs(regfile(addr_int));
+            --rotate
             elsif op=op_rot then
                 addr_int := check_regaddr(dst_addr);
                 shf_int := to_integer(signed(shf_cnt));
@@ -309,6 +317,7 @@ begin
                 pc <= increment(pc); 
                 wait until clk'event and clk'last_value='0' and clk='1';
                 report "rot: reg " & printi(addr_int) & " = " & printvs(regfile(addr_int));
+            --shift
             elsif op=op_shf then
                 addr_int := check_regaddr(dst_addr);
                 shf_int := to_integer(signed(shf_cnt));
@@ -324,9 +333,11 @@ begin
                 pc <= increment(pc); 
                 wait until clk'event and clk'last_value='0' and clk='1';
                 report "shf: reg " & printi(addr_int) & " = " & printvs(regfile(addr_int));
+            --halt
             elsif op=op_hlt then
                 report "program halted" severity failure;
                 wait until pc_start'active; 
+            --complement
             elsif op=op_cmp then
                 if src_type=srcreg then
                     res_word := regfile(check_regaddr(src_addr));
@@ -343,7 +354,7 @@ begin
                 report "cmp: reg " & printv(dst_addr) & " = " & printvs(res_word);
             else 
                 report "instruction not recognized" severity failure;
-            end if;
+            end if; --opcode
         end if; --pload='0' or pc_start'active
     end process;
 
@@ -358,7 +369,8 @@ entity memory is
           addr: in memaddr_t; 
           dbus: inout memword_t;
           mem_ready: buffer bit := '0';
-          pload: buffer bit := '0');
+          pload: buffer bit := '0'
+          );
     type mem_t is array (0 to 2**aw-1) of memword_t;
 end memory;
 architecture beh of memory is
@@ -386,7 +398,6 @@ architecture beh of memory is
                           7=>op_add & srcimm & dstreg & B"00" & X"001" & X"002",--inc result
                           8=>op_shf & srcimm & dstreg & B"00" & X"001" & X"001",--shift the counter L 1
                           9=>op_bra & cc_nc & X"000" & X"005", --jump back 5 ('shift the word')
-                          --9=>op_hlt & X"000_0000",
                           10=>op_str & srcreg & dstmem & B"00" & X"002" & X"001",
                           11=>op_hlt & X"000_0000", others => X"0000_0000"
                           ---------------------------------------------------------
@@ -422,40 +433,35 @@ architecture beh of memory is
     signal busdata: memword_t;
     signal rready, wready: bit := '0';
 begin
+    --avoid bus conflicts with proper tri-stating
     control: process begin
         if pload='0' then
             wait for 1 ns;
             pload <= '1';
         end if; 
       
-        --if mem_en='1' and mem_rw='1' then --read request
         if mem_en='1' and rready='1' then
             dbus <= busdata;
-            --report "dbus has data: " & printvs(busdata);
         else
             dbus <= (others => 'Z');
-            --report "dbus tristated.";
         end if;
 
         if mem_en='1' and (rready='1' or wready='1') then
             mem_ready <= '1';
-            --report "set mem_ready = 1";
         else 
             mem_ready <= '0';
-            --report "set mem_ready = 0";
         end if;
 
         wait on mem_en, mem_rw, rready, wready;
     end process control;
 
-    read: process --(pload, mem_en, mem_rw)
+    read: process 
         variable rwaddr: integer;
     begin
         if pload='1' and mem_en='1' and mem_rw='1' then
             rwaddr := decode_addr(addr);
             busdata <= ram(rwaddr);
             rready <= '1';
-            report "fetched memory location " & integer'image(rwaddr);
         else
             busdata <= (others=>'0');
             rready <= '0';
@@ -463,14 +469,13 @@ begin
         wait on pload, mem_en, mem_rw;
     end process read;
 
-    write: process --(pload, mem_en, mem_rw)
+    write: process 
         variable rwaddr: integer;
     begin
         if pload='1' and mem_en='1' and mem_rw='0' then
             rwaddr := decode_addr(addr);
             ram(rwaddr) <= dbus;
             wready <= '1';
-            report "stored word at memory location " & integer'image(rwaddr);
         else
             wready <= '0';
         end if;
