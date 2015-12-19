@@ -1,0 +1,52 @@
+Reading /mgc/anacad2009_2c/questasim/v6.5f/tcl/vsim/pref.tcl 
+
+# 6.5f
+
+# vsim -do {run -all} -c testfifo 
+# //  QuestaSim-64 6.5f Jun 16 2010 Linux 3.13.0-63-generic
+# //
+# //  Copyright 1991-2010 Mentor Graphics Corporation
+# //              All Rights Reserved.
+# //
+# //  THIS WORK CONTAINS TRADE SECRET AND 
+# //  PROPRIETARY INFORMATION WHICH IS THE PROPERTY
+# //  OF MENTOR GRAPHICS CORPORATION OR ITS LICENSORS
+# //  AND IS SUBJECT TO LICENSE TERMS.
+# //
+# Loading work.testfifo
+# Loading work.fifo
+# run -all 
+# time=                   0, counter=00000, clk=0, en=0, clear=0, rw=x, wordIn=, wordOut=, intr=0
+# time=                  11, counter=00001, clk=1, en=0, clear=1, rw=x, wordIn=, wordOut=, intr=0
+# time=                  12, counter=00001, clk=0, en=0, clear=1, rw=x, wordIn=, wordOut=, intr=0
+# time=                  13, counter=00010, clk=1, en=1, clear=1, rw=x, wordIn=, wordOut=, intr=0
+# time=                  14, counter=00010, clk=0, en=1, clear=1, rw=x, wordIn=, wordOut=, intr=0
+# time=                  15, counter=00011, clk=1, en=1, clear=1, rw=0, wordIn=, wordOut=, intr=0
+# time=                  16, counter=00011, clk=0, en=1, clear=1, rw=0, wordIn=, wordOut=, intr=0
+# time=                  17, counter=00100, clk=1, en=1, clear=1, rw=1, wordIn=c, wordOut=, intr=0
+# time=                  18, counter=00100, clk=0, en=1, clear=1, rw=1, wordIn=c, wordOut=, intr=0
+# time=                  19, counter=00101, clk=1, en=1, clear=1, rw=1, wordIn=a, wordOut=, intr=0
+# time=                  20, counter=00101, clk=0, en=1, clear=1, rw=1, wordIn=a, wordOut=, intr=0
+# time=                  21, counter=00110, clk=1, en=1, clear=1, rw=1, wordIn=t, wordOut=, intr=0
+# time=                  22, counter=00110, clk=0, en=1, clear=1, rw=1, wordIn=t, wordOut=, intr=0
+# time=                  23, counter=00111, clk=1, en=1, clear=1, rw=1, wordIn=s, wordOut=, intr=0
+# time=                  24, counter=00111, clk=0, en=1, clear=1, rw=1, wordIn=s, wordOut=, intr=0
+# time=                  25, counter=01000, clk=1, en=1, clear=1, rw=0, wordIn=s, wordOut=, intr=0
+# time=                  26, counter=01000, clk=0, en=1, clear=1, rw=0, wordIn=s, wordOut=, intr=0
+# time=                  27, counter=01001, clk=1, en=1, clear=1, rw=0, wordIn=s, wordOut=c, intr=0
+# time=                  28, counter=01001, clk=0, en=1, clear=1, rw=0, wordIn=s, wordOut=, intr=0
+# time=                  29, counter=01010, clk=1, en=1, clear=1, rw=0, wordIn=s, wordOut=a, intr=0
+# time=                  30, counter=01010, clk=0, en=1, clear=1, rw=0, wordIn=s, wordOut=, intr=0
+# time=                  31, counter=01011, clk=1, en=1, clear=1, rw=0, wordIn=s, wordOut=t, intr=0
+# time=                  32, counter=01011, clk=0, en=1, clear=1, rw=0, wordIn=s, wordOut=, intr=0
+# time=                  33, counter=01100, clk=1, en=1, clear=1, rw=1, wordIn=b, wordOut=s, intr=0
+# time=                  34, counter=01100, clk=0, en=1, clear=1, rw=1, wordIn=b, wordOut=, intr=0
+# time=                  35, counter=01101, clk=1, en=1, clear=1, rw=1, wordIn=i, wordOut=, intr=0
+# time=                  36, counter=01101, clk=0, en=1, clear=1, rw=1, wordIn=i, wordOut=, intr=0
+# time=                  37, counter=01110, clk=1, en=1, clear=1, rw=1, wordIn=r, wordOut=, intr=0
+# time=                  38, counter=01110, clk=0, en=1, clear=1, rw=1, wordIn=r, wordOut=, intr=0
+# time=                  39, counter=01111, clk=1, en=1, clear=1, rw=1, wordIn=d, wordOut=, intr=0
+# time=                  40, counter=01111, clk=0, en=1, clear=1, rw=1, wordIn=d, wordOut=, intr=0
+# interrupt.
+# ** Note: $finish    : testfifo.v(90)
+#    Time: 41 fs  Iteration: 3  Instance: :testfifo

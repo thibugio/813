@@ -1,0 +1,41 @@
+REAMDE: notes on design choices (potentially useful for both the designer and the grader)
+
+1. PROC module
+    1.1. Inputs
+        1.1.1. dstIsReg
+            Since the destination index can be either an index into RAM memory or an index into the 
+            register bank, there needs to be a means by which to distinguish which is meant.
+            This floag is passed on to the CPU module to be handled there, since the PROC module is
+            not responsible for pulling the actual operands out of memory to execute the instruction.
+        1.1.2. srcIsImm
+            Since the source for certain operations (LOAD) can be either a memory index or a literal value,
+            and for other operations (STORE, XOR, ADD, COMPLEMENT), can be either a register bank index or
+            a literal value, there needs to be a means by which to distinguish which is meant.
+            This flag is handled at the PROC module level, since it determines the value of the src-/dst-
+            type bits that get set in the instruction register (IR) which is passed to the CPU.
+    1.2 Outputs
+        1.2.1. res
+            Since the RAM memory and register bank modules are instantiated in the PROC module and not the 
+            testbench, the testbench can not be reading directly from the memory to get the return value.
+            NB: for the sake of realism, other processes/applications should be able to interface with the
+            same instantiation of RAM memory/register bank that the processor interfaces with, using locks/
+            mutexes to control r/ws. 
+            Additionally, in the current case where other modules instantiating processor cannot directly
+            access the memory/register banks, these modules can operate at a higher-abstracted level, dealing
+            only with the operands (they can remember which register/memory indexes they requested a result be
+            stored to, etc, they just can't directly access it), operations, and result. This could be useful
+            later on if it facilitates building an application wherein a programming language is compiled into
+            the CPU assembly language, transfered to the PROC over the SSP, and results returned via SSP to
+            the master program. (This may be a tad ambitious).
+        1.2.2. resvalid
+            This is a flag to the instantiating process that execution of the current instruction has finished
+            and the return value (if applicable) contains valid data to be read.
+
+2. CPU module
+    2.1. Inputs
+    2.2. Outputs 
+        2.2.1. memlockLow
+            This is a flag from the CPU to the PROC that the CPU is done reading/writing to the memory/register
+            bank, and that it is safe for the PROC to read from the memory/register bank to acquire the return
+            value (if applicable) to send to the instantiating process. Thus, this flag will always be set
+            one clock cycle before resvalid.

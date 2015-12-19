@@ -1,0 +1,23 @@
+//program to count the number of 1's in Mem[0]. Store result in Mem[1].
+
+val=Mem[0];
+count=0;
+do {
+    val=val<<1;
+    if (Psr[0]) {
+        count += 1;
+    }
+} while (val != 0);
+Mem[1]=count;
+
+
+LD R0, M0
+LD R1, '0'
+SHF R0, '1':LABEL_0
+BRA LABEL_1 NC
+ADD R1, '1'
+BRA LABEL_2 Z:LABEL_1
+BRA LABEL_0 A
+STR M1, R1:LABEL_2
+HLT
+

@@ -1,0 +1,114 @@
+m255
+K3
+13
+cModel Technology
+Z0 d/home/rmf61/LabHome/cwru/eecs318/verilog/src/ps1
+vbehavioral
+!s100 7mk62h3a]=BfjF65dZiGo3
+IPU]aFHcW_Be6UzDfgifJ51
+VH;c]c3^Y_K1>=ZW[f<PK10
+w1442860505
+8p5/behavioral.v
+Fp5/behavioral.v
+L0 4
+Z1 OL;L;6.5f;42
+r1
+!s85 0
+31
+Z2 o-L mtiAvm -L mtiOvm -L mtiUPF
+vfullAdder
+I1R2aM1`j5;WT=P_fk<Yi;1
+V=dgeXfCTIaZ@z?oX1YJY22
+w0
+8p3/multiplier.v
+Fp3/multiplier.v
+L0 57
+R1
+r1
+31
+Z3 o-source -L mtiAvm -L mtiOvm -L mtiUPF
+nfull@adder
+!s100 hMLRG?<8UMb<fN>85_?@>2
+!s85 0
+vlookaheadAdder
+IcoA@C^`MWXj=H_bRDecZG1
+V`LzDfiTm;h;`iZCn3_^EO0
+w1442859552
+8p2/lookaheadAdder.v
+Fp2/lookaheadAdder.v
+L0 3
+R1
+r1
+31
+R3
+nlookahead@adder
+!s100 Bg>XU[_^=:zbV3lNXKR^Z1
+!s85 0
+vnb_csa
+IjKT9Ln715>nfIJDoTS8WM2
+V8@V@j7jRUI7ALSl`Q6fIC0
+w1442845872
+8p4/nb_csa.v
+Fp4/nb_csa.v
+L0 4
+R1
+r1
+31
+R3
+!s100 ]KRM4]Leb0_N[5XO8ahYj0
+!s85 0
+vpartialProduct
+Ic7zbc0EnINYhPDb>gOOSF3
+Vh[iCBFceXCcU`UJ>9jfXz2
+w1442859962
+8p3/partialProduct.v
+Fp3/partialProduct.v
+L0 3
+R1
+r1
+31
+R3
+npartial@product
+!s100 g=1F2oo@MOM42<QInb4:Z2
+!s85 0
+vrippleAdder
+I:^ZWCW2fzPeeOmf24S>Gk0
+V7mb?a^QceL84d51`3C^bn2
+w1442838714
+8p1/rippleAdder.v
+Fp1/rippleAdder.v
+L0 4
+R1
+r1
+31
+R3
+nripple@adder
+!s100 1k@3A]ZRhHaS@]fRZ=cEO3
+!s85 0
+vstructural
+IcmLMXMXV;`:__n?89B>`02
+VR6YWJX71i[VK<3oF>8:kl2
+w1442846605
+8p5/structural.v
+Fp5/structural.v
+L0 4
+R1
+r1
+31
+R2
+!s100 bbYK9?aTN65L9>DSPGU850
+!s85 0
+vtestStructural
+IG>X8fFEG?ldR3V6jRIZYB0
+V96oNR;nE`lA7G42_ii6Yi2
+w1442848029
+8p5/testStructural.v
+Fp5/testStructural.v
+L0 3
+R1
+r1
+31
+R3
+ntest@structural
+!s100 Qgd7l0dh8IN^:`_bHkP4m0
+!s85 0

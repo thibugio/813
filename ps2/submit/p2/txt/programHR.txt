@@ -1,0 +1,35 @@
+Problem 3.
+//program to count the number of 1's in Mem[0]. Store result in Mem[1].
+Mem[0]->somenumber
+Mem[1]->'0'
+LD R0, M0
+LD R1, '0'
+LD R2, '{1'b1, {BUSW-1{1'b0}}'
+SHF R0, '1' 
+BRA 8 <jump f 2> NC
+ADD R1, '1'
+SHF R2, '-1'
+BRA 11 <jump f 2> Z
+BRA 5 <jump b 5> A
+STR M1, R1
+HLT
+
+This works by shifting the value in Mem[0] (loaded into a register) left by 1
+and incrementing a count variable if there was a carry. This is repeated 32 times.
+
+
+
+Problem 4.
+//program to multiply to 4-bit numbers A and B and store the results in C.
+Mem[0]->A
+Mem[1]->B
+Mem[2]->'0'
+LD R0 M0
+LD R1 M1
+ADD R0 R0
+ADD R2 -1
+BRA 5 <JUMP B 2> PO
+STR R0 M2
+
+This works by adding A to itself B times; the counting is done by decrementing B at
+each iteration and checking if B=0.

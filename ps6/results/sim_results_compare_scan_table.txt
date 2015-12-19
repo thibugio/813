@@ -1,0 +1,13 @@
+27
+scan mean: 4.42e-05
+scan var: 8.79555555556e-11
+table mean: 3.69e-05
+table var: 8.96555555556e-11
+p-value: 0.100347472093
+
+35932
+scan mean: 0.0208049
+scan var: 4.41307585444e-05
+table mean: 0.0219378
+table var: 4.44859832889e-05
+p-value: 0.70797692163

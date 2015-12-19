@@ -1,0 +1,13 @@
+// file: sumGen.v
+// create the 'sum' signal for the lookahead adder
+
+module sumGen(cn_1, pn, sn);
+
+    input cn_1, pn;
+    output sn;
+
+    parameter delay = 10;
+
+    xor #(2*delay) xor0(sn, cn_1, pn);
+
+endmodule

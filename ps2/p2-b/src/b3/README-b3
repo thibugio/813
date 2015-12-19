@@ -1,0 +1,20 @@
+main-b3-tasks.v:
+This version uses tasks and was an attempt to simulate an actual processor that takes a varying number
+of clock cycles for each instruction. It uses a mutex to control the timing of the instruction
+execution (i.e., the mutex is held low while each instruction is being executed, and thereafter 
+is released). This version uses an 'unraveled' memory and register addressing strategy. However,
+for some reason the compiler thinks that an expression composed of constants is not constant 
+(perhaps because there is the 'possibility' that the result could overflow?) and so it does not
+compile.
+
+main-b3-functions-vec.v:
+This version uses functions instead of tasks so that each operation could be completed within the span
+of a single clock cycle, and thus it would be valid to update the program counter at each clock cycle as
+well. An issue here is that always@(posedge clk) blocks are similar to functions in that they are committed
+to processing/updating data at a guaranteed time/rate, and so should (can?) not contain timing statements, 
+such as tasks--e.g., the system task $display. Thus, it is infeasible to print the status of the instruction
+register at each clock cycle for debugging. This version also uses unraveled (vectorized) indexing strategy.
+
+main-b3-functions-mem.v:
+This version also uses functions. To 'simplify' the code (and to satisfy the whiny compiler), the memory and
+register data structures were implemented as 'memories', i.e., arrays of data-width-vectors. 

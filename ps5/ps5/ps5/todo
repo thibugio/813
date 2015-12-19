@@ -1,0 +1,4 @@
+to make this run faster (currently takes ~4-5s to process, ~20s to print to file),
+hash on the assigned gate-ids (or just create an array from hashtable after processing
+with the exact number of gates and index it by gate-id). Additionally, store fan(in/out)
+lists by gate-ids.

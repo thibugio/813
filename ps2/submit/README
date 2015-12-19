@@ -1,0 +1,27 @@
+Rebecca Frederick (rmf61)
+EECS 318
+Problem Set 2.
+Oct 8 (10) 2015
+
+Folder p1 contains the solution to Problem 1. 
+Folder p2 contains the solution to Problems 2-4.
+
+The processor is implemented as a single module. This was done to avoid the complexity of 
+having the top-level module instatiate a memory from which both it and the cpu module (which 
+it would then have to instantiate) would both have to read from / write to (in the case of the 
+cpu). Functions are used instead of tasks so that the PC can be incremented at each clock cycle.
+(For some reason, the functions are able to enable system TASKS...I did not think this would be
+allowed, but nonetheless it was useful for debugging.) The program can be loaded into memory
+from one of two ways: either from the function fLoadProgram, which manually writes the necessary
+data and instruction bits into the memory addresses, or from the function fLoadProgramFromFile,
+which reads program data from an external file. The external file can be generated using the parser
+I wrote to parse an assembly program into the Instruction Register format. As far as I can tell,
+my processor functions correctly. The assembly file is currently 'input.txt', and the generated 
+memory data is written to the file 'output.txt'. The required assemlby programs for Problems 3 and
+4 in the HW are located in the file 'programHR.txt'. I included the additional C programs simply
+because it is a convenient way to test the CPU module using human-readable code.
+
+The SSP module has not been simulated since I started much too late on this assignment (hence why it is
+already being turned in 1 1/2 days late). This is unfortunate since it would have been interesting to
+connect the SSP module to the CPU module and pipe instructions to the processor over the serial port.
+Lesson learned; I shall accept my 10-20% deduction this time and start earlier on HW3.

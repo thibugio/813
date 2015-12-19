@@ -1,0 +1,2 @@
+implements memory elements as arrays instead of as modules
+for readability and simplicity of implementation

@@ -1,0 +1,9 @@
+rmf61@o405-u07:~/LabHome/cwru/eecs318/verilog/src/ps1$ qvlcom -source p1/rippleAdder.v p1/fullRippleAdder.v p1/testFullRippleAdder.v 
+QuestaSim-64 vlog 6.5f Compiler 2010.06 Jun 16 2010
+-- Compiling module rippleAdder
+** Error: (vlog-1935) Unable to move temporary file /home/rmf61/LabHome/cwru/eecs318/verilog/src/ps1/work/_temp/vlogUoA8As to /home/rmf61/LabHome/cwru/eecs318/verilog/src/ps1/work/ripple@adder/_primary.dbs.
+Operation not permitted. (errno = EPERM)
+** Error: (vlog-1935) Unable to move temporary file /home/rmf61/LabHome/cwru/eecs318/verilog/src/ps1/work/_temp/vlog4QLWMD to /home/rmf61/LabHome/cwru/eecs318/verilog/src/ps1/work/ripple@adder/_primary.dat.
+Operation not permitted. (errno = EPERM)
+###### p1/rippleAdder.v(17): endmodule
+** Error: p1/rippleAdder.v(17): Verilog Compiler exiting

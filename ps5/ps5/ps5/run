@@ -1,0 +1,1 @@
+valgrind --leak-check=full --track-origins=yes bin/preprocess dat/s27.bench out/intermediate_file_s27.txt 
